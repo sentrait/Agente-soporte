@@ -1,33 +1,40 @@
 import React, { useState } from 'react';
 import { Container, TextField, Button, Typography, Alert, Box, Link } from '@mui/material';
 
-function LoginPage({ onLogin, onRegister }) {
+function RegisterPage({ onRegister }) {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setSuccess('');
 
-    if (!email || !password) {
-      setError('Por favor, ingresa email y contraseña.');
+    if (!username || !email || !password || !password2) {
+      setError('Por favor, completa todos los campos.');
+      return;
+    }
+    if (password !== password2) {
+      setError('Las contraseñas no coinciden.');
       return;
     }
 
     try {
-      const response = await fetch('/api/users/token/', {
+      const response = await fetch('/api/users/register/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, email, password, password2 })
       });
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem('token', data.access);
-        localStorage.setItem('refresh', data.refresh);
-        onLogin(data.access, data.user);
+        setSuccess('¡Registro exitoso! Ahora puedes iniciar sesión.');
+        setUsername(''); setEmail(''); setPassword(''); setPassword2('');
       } else {
-        setError(data.detail || 'Credenciales inválidas.');
+        setError(data.email || data.username || data.password || data.non_field_errors || 'Error en el registro.');
       }
     } catch (err) {
       setError('Error de red o el servidor no está disponible.');
@@ -38,17 +45,26 @@ function LoginPage({ onLogin, onRegister }) {
     <Container maxWidth="xs" sx={{ mt: 8 }}>
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Typography component="h1" variant="h5" sx={{ mb: 2 }}>
-          Iniciar sesión
+          Registro
         </Typography>
         <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+          <TextField
+            margin="normal"
+            fullWidth
+            id="username"
+            label="Nombre de usuario"
+            name="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
           <TextField
             margin="normal"
             fullWidth
             id="email"
             label="Email"
             name="email"
-            autoComplete="email"
-            autoFocus
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -60,12 +76,23 @@ function LoginPage({ onLogin, onRegister }) {
             label="Contraseña"
             type="password"
             id="password"
-            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <TextField
+            margin="normal"
+            fullWidth
+            name="password2"
+            label="Repite la contraseña"
+            type="password"
+            id="password2"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            required
+          />
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+          {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
           <Button
             type="submit"
             fullWidth
@@ -73,13 +100,13 @@ function LoginPage({ onLogin, onRegister }) {
             color="primary"
             sx={{ mt: 3, mb: 2 }}
           >
-            Iniciar sesión
+            Registrarse
           </Button>
         </Box>
         <Typography variant="body2" sx={{ mt: 2 }}>
-          ¿No tienes una cuenta?{' '}
-          <Link href="#" onClick={e => { e.preventDefault(); onRegister(); }}>
-            Regístrate aquí
+          ¿Ya tienes una cuenta?{' '}
+          <Link href="#" onClick={e => { e.preventDefault(); window.location.reload(); }}>
+            Inicia sesión aquí
           </Link>
         </Typography>
       </Box>
@@ -87,4 +114,4 @@ function LoginPage({ onLogin, onRegister }) {
   );
 }
 
-export default LoginPage;
+export default RegisterPage; 

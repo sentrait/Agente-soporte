@@ -1,0 +1,209 @@
+/* Estilos globales */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+}
+
+/* Estilos para scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Estilos para transiciones */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease-in;
+}
+
+/* Estilos para animaciones de carga */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Estilos para mensajes de error y éxito */
+.error-message {
+  color: #d32f2f;
+  background-color: #ffebee;
+  padding: 8px 16px;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.success-message {
+  color: #2e7d32;
+  background-color: #e8f5e9;
+  padding: 8px 16px;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+/* Estilos para formularios */
+.form-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.form-field {
+  margin-bottom: 16px;
+}
+
+/* Estilos para tarjetas */
+.card-hover {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para botones */
+.button-icon {
+  margin-right: 8px;
+}
+
+/* Estilos para tablas */
+.table-container {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.table-header {
+  background-color: #f5f5f5;
+}
+
+/* Estilos para modales */
+.modal-content {
+  padding: 24px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Estilos para tooltips */
+.tooltip {
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+/* Estilos para badges */
+.badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Estilos para chips */
+.chip-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+/* Estilos para avatares */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Estilos para listas */
+.list-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+/* Estilos para búsqueda */
+.search-container {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  padding-left: 40px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #757575;
+}
+
+/* Estilos para filtros */
+.filter-container {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* Estilos para paginación */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+/* Estilos para responsive */
+@media (max-width: 600px) {
+  .form-container {
+    padding: 16px;
+  }
+  
+  .modal-content {
+    padding: 16px;
+  }
+  
+  .filter-container {
+    flex-direction: column;
+  }
+} 
