@@ -33,9 +33,16 @@ MAX_RETRIES = 3
 INITIAL_RETRY_DELAY = 10  # segundos
 
 # Control de rate limiting
+# Estas variables y el lock se mantienen para la lógica de conteo.
 last_request_time = datetime.now()
 request_count = 0
 lock = threading.Lock()
+
+# Custom exception for rate limiting
+class RateLimitExceededError(Exception):
+    def __init__(self, message, sleep_time):
+        super().__init__(message)
+        self.sleep_time = sleep_time
 
 # Cache para respuestas comunes
 @lru_cache(maxsize=100)
@@ -85,13 +92,18 @@ def check_rate_limit():
         if request_count >= RATE_LIMIT:
             sleep_time = RATE_WINDOW - (now - last_request_time).total_seconds()
             if sleep_time > 0:
-                logger.info(f"Rate limit alcanzado. Esperando {sleep_time:.2f} segundos...")
-                time.sleep(sleep_time)
-                last_request_time = datetime.now()
-                request_count = 0
+                logger.info(f"Rate limit check: Exceeded. Need to sleep for {sleep_time:.2f} segundos.")
+                # No dormir aquí, solo devolver el tiempo de espera necesario.
+                # Reiniciar el contador y tiempo para la próxima ventana después de la espera teórica.
+                # Esto es una simplificación; idealmente, el cliente esperaría y luego la nueva solicitud
+                # encontraría la ventana reiniciada. Para este enfoque, asumimos que el cliente
+                # respetará el Retry-After.
+                # last_request_time = now + timedelta(seconds=sleep_time) # Proyectar el reinicio
+                # request_count = 0 # Reiniciar contador para la nueva ventana proyectada
+                return sleep_time
         
         request_count += 1
-        return True
+        return 0 # 0 o None para indicar que no hay que esperar
 
 def process_message_with_retry(bedrock, prompt, retry_count=0):
     try:
@@ -101,7 +113,11 @@ def process_message_with_retry(bedrock, prompt, retry_count=0):
             logger.info("Respuesta obtenida de caché")
             return cached_response
 
-        check_rate_limit()
+        # Mover la lógica de check_rate_limit aquí y manejar su resultado
+        sleep_needed = check_rate_limit()
+        if sleep_needed > 0:
+            # Propagar la necesidad de esperar al chat_view
+            raise RateLimitExceededError("Rate limit exceeded", sleep_needed)
         
         response = bedrock.invoke_model(
             modelId='anthropic.claude-3-sonnet-20240229-v1:0',
@@ -116,9 +132,10 @@ def process_message_with_retry(bedrock, prompt, retry_count=0):
         response_body = json.loads(response['body'].read())
         generated_text = response_body.get('completion', '')
         
-        # Guardar en caché
-        get_cached_response.cache_clear()  # Limpiar caché antigua
-        get_cached_response(prompt)  # Guardar nueva respuesta
+        # La lógica de caché actual con get_cached_response siempre devolviendo None
+        # no guarda 'generated_text'. Simplemente se eliminan las llamadas problemáticas.
+        # get_cached_response.cache_clear() # Eliminado
+        # get_cached_response(prompt) # Eliminado - esto no guardaba generated_text
         
         return generated_text
         
@@ -158,21 +175,37 @@ def chat_view(request):
         Responde al siguiente mensaje de manera concisa y útil: {message}"""
 
         try:
-            # Procesar el mensaje directamente
             generated_text = process_message_with_retry(bedrock, prompt)
             
-            if generated_text:
+            if generated_text: # Asumiendo que generated_text no será None si hay éxito
                 logger.info(f"Respuesta generada: {generated_text}")
                 return JsonResponse({'response': generated_text})
+            else: # Esto no debería ocurrir si process_message_with_retry lanza excepciones en error
+                logger.error("process_message_with_retry devolvió None sin lanzar excepción")
+                return JsonResponse({'error': 'No se pudo generar una respuesta'}, status=500)
+
+        except RateLimitExceededError as rle:
+            logger.warning(f"Rate limit excedido para el usuario {user.username if user else 'anonymous'}. Retry-After: {rle.sleep_time}")
+            response = JsonResponse({'error': 'Too many requests. Please try again later.'}, status=429)
+            response['Retry-After'] = str(int(rle.sleep_time)) # Retry-After debe ser un entero de segundos
+            return response
             
         except Exception as e:
             logger.error(f"Error al generar respuesta: {str(e)}")
+            # Mantener el error 503 para otros errores de Bedrock/servicio,
+            # pero el rate limiting ahora es 429.
+            if 'ThrottlingException' in str(e): # Bedrock también puede hacer throttling
+                 return JsonResponse({
+                    'error': 'El servicio está experimentando una alta demanda (Bedrock). Por favor, espera unos minutos.'
+                }, status=503) # Opcionalmente, también podría ser 429 con Retry-After si Bedrock lo provee
+
             return JsonResponse({
                 'error': 'El servicio está experimentando una alta demanda. Por favor, espera unos minutos antes de intentar nuevamente.'
             }, status=503)
 
+        # Esta parte ya no debería ser alcanzada si process_message_with_retry siempre devuelve texto o lanza excepción
         return JsonResponse({
-            'error': 'No se pudo generar una respuesta'
+            'error': 'No se pudo generar una respuesta (flujo inesperado)'
         }, status=500)
 
     except json.JSONDecodeError:

@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, TextField, Button, Typography, Paper, CircularProgress, Alert, Snackbar } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import { useAuth } from '../contexts/AuthContext';
-
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000; // 2 segundos
+import { sendMessage } from '../../services/api'; // Importar sendMessage
 
 const ChatPage = () => {
   const [messages, setMessages] = useState([]);
@@ -14,7 +12,7 @@ const ChatPage = () => {
   const [error, setError] = useState(null);
   const [showError, setShowError] = useState(false);
   const messagesEndRef = useRef(null);
-  const { token } = useAuth();
+  // const { token } = useAuth(); // No longer needed for direct header construction
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,42 +33,6 @@ const ChatPage = () => {
     scrollToBottom();
   }, [messages]);
 
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-  const sendMessageWithRetry = async (message, retryCount = 0) => {
-    try {
-      const response = await fetch('http://localhost:8000/api/chat/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ message })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (response.status === 503 && retryCount < 3) {
-          // Esperar antes de reintentar
-          await new Promise(resolve => setTimeout(resolve, 5000 * (retryCount + 1)));
-          return sendMessageWithRetry(message, retryCount + 1);
-        }
-        throw new Error(errorData.error || 'Error al enviar el mensaje');
-      }
-
-      const data = await response.json();
-      return data.response;
-    } catch (error) {
-      console.error('Error:', error);
-      if (retryCount < 3) {
-        // Esperar antes de reintentar
-        await new Promise(resolve => setTimeout(resolve, 5000 * (retryCount + 1)));
-        return sendMessageWithRetry(message, retryCount + 1);
-      }
-      throw error;
-    }
-  };
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -86,15 +48,18 @@ const ChatPage = () => {
     setError(null);
 
     try {
-      const response = await sendMessageWithRetry(newMessage);
+      // Llamar a la función sendMessage importada
+      const responseData = await sendMessage(newMessage);
       
       setMessages(prev => [...prev, {
-        text: response,
+        text: responseData.response, // Acceder a la propiedad 'response' de la data retornada
         sender: 'bot'
       }]);
     } catch (err) {
       console.error('Error al enviar mensaje:', err);
-      setError(err.message || 'Error al enviar el mensaje. Por favor, intenta de nuevo en unos minutos.');
+      // El error ya debería ser un objeto Error, potencialmente con err.response.data
+      const errorMessage = err.response?.data?.error || err.message || 'Error al enviar el mensaje. Por favor, intenta de nuevo en unos minutos.';
+      setError(errorMessage);
       setShowError(true);
       setMessages(prev => [...prev, {
         text: "Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo en unos minutos.",
